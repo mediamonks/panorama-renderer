@@ -17,4 +17,5 @@ void mainImage( out vec4 c, vec2 p ) {
     rd.xyz = normalize(rd.xyz);
     vec2 euv = getEqUV(rd.xyz);
     c.xyz = mix( texture(iChannel0, euv).xyz, texture(iChannel1, euv).xyz, smoothstep(.4, .6, uMix));
+    c.w = 1.;
 }

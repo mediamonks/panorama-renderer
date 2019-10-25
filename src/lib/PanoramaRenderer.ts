@@ -544,10 +544,10 @@ export default class PanoramaRenderer extends sengDisposable {
       uniform float uBarrelDistortion;\
       vec2 getEqUV(vec3 rd)\
           {\
-           vec2 uv = vec2(atan(rd.z, rd.x), asin(rd.y));\
-        uv *= vec2(0.1591,0.3183);\
-        uv.y += 0.5;\
-        return fract(uv);\
+            vec2 uv = vec2(atan(rd.z, rd.x), asin(rd.y));\
+            uv *= vec2(0.1591,0.3183);\
+            uv.y += 0.5;\
+            return fract(uv);\
           }\
           void mainImage( out vec4 c, vec2 p )\
           {\
@@ -558,6 +558,7 @@ export default class PanoramaRenderer extends sengDisposable {
               rd = uInvViewProjection * rd;\
               rd.xyz = normalize(rd.xyz);\
               c.xyz = texture(iChannel0, getEqUV(rd.xyz)).xyz;\
+              c.w = 1.;\
       }';
   }
 

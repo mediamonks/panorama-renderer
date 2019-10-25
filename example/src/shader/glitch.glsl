@@ -89,7 +89,7 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 
     // Apply the noise as x displacement for every line
     float xpos = uv.x - noise * noise * 0.25;
-	fragColor = texture(iChannel0, vec2(xpos, uv.y));
+	  fragColor = texture(iChannel0, vec2(xpos, uv.y));
 
     // Mix in some random interference for lines
     fragColor.rgb = mix(fragColor.rgb, vec3(rand(vec2(uv.y * time))), noise * 0.3).rgb;
