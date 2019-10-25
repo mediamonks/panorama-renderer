@@ -5,7 +5,7 @@ import { ImageEffectRendererBuffer } from 'seng-effectrenderer/lib/ImageEffectRe
 
 class MouseButton {
   public press: boolean = false; // currently pressed
-  public down: boolean = false;  // moment of press start
+  public down: boolean = false; // moment of press start
   public oldDown: boolean = false;
   public hit: boolean = false;
   public downTime: number = 0;
@@ -50,14 +50,19 @@ class MouseListener extends sengDisposable {
     this.canvas.addEventListener('mouseout', this.endListener, false);
   }
 
-  private onMouseStart = (event: TouchEvent | MouseEvent): void => {
+  private onMouseStart = (event: any): void => {
     event.preventDefault();
 
-    const isTouch = event instanceof TouchEvent;
-    this.resetSpeed = true;
+    let isTouch = false;
+    if (window['TouchEvent'] && event instanceof TouchEvent) {
+      isTouch = true;
+      this.setMouse((<TouchEvent>event).targetTouches[0]);
+    } else {
+      this.setMouse(event);
+    }
 
+    this.resetSpeed = true;
     this.buttons[isTouch ? 0 : event.which - 1].press = true;
-    this.setMouse(isTouch ? (<TouchEvent>event).targetTouches[0] : event);
 
     for (let i = 0; i < this.mouseClickCallbacks.length; i++) {
       this.mouseClickCallbacks[i].call(this);
@@ -154,10 +159,13 @@ export class DefaultRotationController extends sengDisposable implements IRotati
 
   public init(renderer: PanoramaRenderer, settings: any): void {
     this.renderer = renderer;
-    this.settings = Object.assign({
-      rotateInertia: 0.95,
-      smoothness: 0.75,
-    }, settings);
+    this.settings = Object.assign(
+      {
+        rotateInertia: 0.95,
+        smoothness: 0.75,
+      },
+      settings,
+    );
 
     this.mouseListener = new MouseListener(this.renderer.getCanvas());
   }
@@ -168,13 +176,21 @@ export class DefaultRotationController extends sengDisposable implements IRotati
     // aspect ratio can change
     const aspect = this.renderer.getAspect();
     const degToRad = Math.PI / 180;
-    const z = .5 / Math.tan(this.renderer.getFov() * (.5 * degToRad));
-    const fovH = Math.atan2(aspect * .5, z) * (2 * 180 / Math.PI);
+    const z = 0.5 / Math.tan(this.renderer.getFov() * (0.5 * degToRad));
+    const fovH = Math.atan2(aspect * 0.5, z) * (2 * 180 / Math.PI);
 
     if (this.mouseListener.getMouseDown()) {
       const ms = this.mouseListener.getNormalizedVelocity();
-      this.rotateSpeedX = DefaultRotationController.lerp(-ms[0] * fovH, this.rotateSpeedX, this.settings.smoothness);
-      this.rotateSpeedY = DefaultRotationController.lerp(ms[1] * this.renderer.getFov(), this.rotateSpeedY, this.settings.smoothness);
+      this.rotateSpeedX = DefaultRotationController.lerp(
+        -ms[0] * fovH,
+        this.rotateSpeedX,
+        this.settings.smoothness,
+      );
+      this.rotateSpeedY = DefaultRotationController.lerp(
+        ms[1] * this.renderer.getFov(),
+        this.rotateSpeedY,
+        this.settings.smoothness,
+      );
     } else {
       this.rotateSpeedX *= this.settings.rotateInertia;
       this.rotateSpeedY *= this.settings.rotateInertia;
@@ -191,7 +207,7 @@ export class DefaultRotationController extends sengDisposable implements IRotati
   }
 
   private static lerp(a: number, b: number, i: number): number {
-    return ((1 - i) * a) + (i * b);
+    return (1 - i) * a + i * b;
   }
 
   dispose() {
@@ -244,26 +260,38 @@ export default class PanoramaRenderer extends sengDisposable {
    *          rotationController: false, // custom rotation controller
    *          rotationControllerSettings: {}, // settings for rotation controller
    */
-  constructor(canvasParent: HTMLElement, image: HTMLImageElement | HTMLVideoElement | HTMLCanvasElement | null, settings: any = {}) {
+  constructor(
+    canvasParent: HTMLElement,
+    image: HTMLImageElement | HTMLVideoElement | HTMLCanvasElement | null,
+    settings: any = {},
+  ) {
     super();
-    this.settings = Object.assign({
-      fov: 60,
-      barrelDistortion: 0.1,
-      shader: false,
-      imageEffectRendererBuffer: false,
-      canvas: false,
-      rotationController: false,
-      rotationControllerSettings: {},
-    }, settings);
+    this.settings = Object.assign(
+      {
+        fov: 60,
+        barrelDistortion: 0.1,
+        shader: false,
+        imageEffectRendererBuffer: false,
+        canvas: false,
+        rotationController: false,
+        rotationControllerSettings: {},
+      },
+      settings,
+    );
 
     if (!this.settings.imageEffectRendererBuffer) {
-      this.imageEffectRenderer = ImageEffectRenderer.createTemporary(canvasParent, this.getShader());
+      this.imageEffectRenderer = ImageEffectRenderer.createTemporary(
+        canvasParent,
+        this.getShader(),
+      );
       this.imageEffectRendererBuffer = this.imageEffectRenderer.getMainBuffer();
     } else {
       this.imageEffectRendererBuffer = this.settings.imageEffectRendererBuffer;
     }
 
-    this.canvas = this.settings.canvas ? this.settings.canvas : canvasParent ? canvasParent.querySelector('canvas') : null;
+    this.canvas = this.settings.canvas
+      ? this.settings.canvas
+      : canvasParent ? canvasParent.querySelector('canvas') : null;
     if (!this.canvas) {
       throw new Error('Unable to find panorama canvas');
     }
@@ -341,7 +369,12 @@ export default class PanoramaRenderer extends sengDisposable {
     if (this.transitionProgress < 1) {
       // assumes 60 fps
       this.transitionProgress += 0.016;
-      quat.slerp(this.rotation, this.rotationStart, this.rotationEnd, PanoramaRenderer.smoothstep01(this.transitionProgress));
+      quat.slerp(
+        this.rotation,
+        this.rotationStart,
+        this.rotationEnd,
+        PanoramaRenderer.smoothstep01(this.transitionProgress),
+      );
     }
     this.updateViewProjection(this.getFov(), this.getAspect());
     mat4.invert(this.invViewProjection, this.viewProjection);
@@ -376,7 +409,10 @@ export default class PanoramaRenderer extends sengDisposable {
     const b = this.getBarrelDistortion();
     if (b * l > 0) {
       // Reinder magic
-      const x0 = Math.pow(9 * b * b * l + Math.sqrt(3) * Math.sqrt(27 * b * b * b * b * l * l + 4 * b * b * b), 1 / 3);
+      const x0 = Math.pow(
+        9 * b * b * l + Math.sqrt(3) * Math.sqrt(27 * b * b * b * b * l * l + 4 * b * b * b),
+        1 / 3,
+      );
       let x = x0 / (Math.pow(2, 1 / 3) * Math.pow(3, 2 / 3) * b);
       x -= Math.pow(2 / 3, 1 / 3) / x0;
       const f = x / l;
@@ -467,7 +503,9 @@ export default class PanoramaRenderer extends sengDisposable {
    */
   public addImage(
     image: HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageEffectRendererBuffer,
-    flipY: boolean = true, useMipMap?: boolean): void {
+    flipY: boolean = true,
+    useMipMap?: boolean,
+  ): void {
     this.getRendererBuffer().addImage(image, 0, true, true, flipY, useMipMap);
   }
 
@@ -480,7 +518,9 @@ export default class PanoramaRenderer extends sengDisposable {
    */
   public updateImage(
     image: HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageEffectRendererBuffer,
-    flipY: boolean = true, useMipMap?: boolean): void {
+    flipY: boolean = true,
+    useMipMap?: boolean,
+  ): void {
     this.getRendererBuffer().updateImage(image, 0, true, true, flipY, useMipMap);
   }
 
@@ -498,7 +538,9 @@ export default class PanoramaRenderer extends sengDisposable {
   }
 
   private getShader(): string {
-    return this.settings.shader ? this.settings.shader : 'uniform mat4 uInvViewProjection;\
+    return this.settings.shader
+      ? this.settings.shader
+      : 'uniform mat4 uInvViewProjection;\
       uniform float uBarrelDistortion;\
       vec2 getEqUV(vec3 rd)\
           {\
