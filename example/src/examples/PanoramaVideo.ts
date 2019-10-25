@@ -9,7 +9,7 @@ export default class Panorama {
   constructor(wrapper: HTMLElement) {
     this.wrapper = wrapper;
     this.video = <HTMLVideoElement>document.querySelector('.js-video');
-    ImageLoader.loadImages(['panorama.jpg']).then(this.init.bind(this));
+    ImageLoader.loadImages(['panorama_1.jpg']).then(this.init.bind(this));
   }
 
   private init(): void {
@@ -28,7 +28,7 @@ export default class Panorama {
   }
 
   private tick(): void {
-    this.renderer.updateImage(this.video, true, true);
+    this.renderer.updateImage(this.video);
     requestAnimationFrame(this.tick.bind(this));
   }
 }

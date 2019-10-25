@@ -1,6 +1,7 @@
-import {mat3, mat4, quat, vec3, vec4} from 'gl-matrix';
-import {ImageEffectRenderer} from 'seng-effectrenderer';
+import { mat3, mat4, quat, vec3, vec4 } from 'gl-matrix';
+import { ImageEffectRenderer } from 'seng-effectrenderer';
 import sengDisposable from 'seng-disposable';
+import { ImageEffectRendererBuffer } from 'seng-effectrenderer/lib/ImageEffectRenderer';
 
 class MouseButton {
   public press: boolean = false; // currently pressed
@@ -135,139 +136,229 @@ class MouseListener extends sengDisposable {
   }
 }
 
-export default class PanoramaRenderer extends sengDisposable {
-  private imageEffectRender: ImageEffectRenderer;
+export interface IRotationController {
+  init(renderer: PanoramaRenderer, settings: any): void;
+
+  update(rotation: quat): void;
+}
+
+export class DefaultRotationController extends sengDisposable implements IRotationController {
+  private settings: any;
+  private renderer: PanoramaRenderer;
   private mouseListener: MouseListener;
+
   private rotateSpeedX: number = 0;
   private rotateSpeedY: number = 0;
-  private inertia: number;
-  private smoothness: number;
-  private fovV: number;
-  private barrelDistortion: number = 0;
-  private transitionProgress: number = 1;
-  private animationLoop: boolean = false;
-
   private rotateX: quat = quat.create();
   private rotateY: quat = quat.create();
-  private rotation: quat = quat.create();
-  private rotationStart: quat = quat.create();
-  private rotationEnd: quat = quat.create();
-  private projection: mat4 = mat4.create();
-  private view: mat4 = mat4.create();
-  private viewProjection: mat4 = mat4.create();
-  private invViewProjection: mat4 = mat4.create();
-  private screenPos: vec4 = vec4.create();
-  private tempM3: mat3 = mat3.create();
-  private tempV3: vec3 = vec3.create();
-  private tempV4: vec4 = vec4.create();
 
-  // wide fov will distort. This can be countered using barrel distortion
-  // http://www.decarpentier.nl/downloads/lensdistortion-webgl/lensdistortion-webgl.html
-  constructor(canvasParent: HTMLElement, image: HTMLImageElement | HTMLVideoElement | HTMLCanvasElement, fovDegrees: number = 70, rotateInertia = 0.95, smoothness = 0.75, barrelDistortion = 0.25) {
-    super();
+  public init(renderer: PanoramaRenderer, settings: any): void {
+    this.renderer = renderer;
+    this.settings = Object.assign({
+      rotateInertia: 0.95,
+      smoothness: 0.75,
+    }, settings);
 
-    this.inertia = rotateInertia;
-    this.fovV = fovDegrees;
-    this.smoothness = smoothness;
-    this.barrelDistortion = barrelDistortion;
-    this.imageEffectRender = ImageEffectRenderer.createTemporary(canvasParent, this.getShader());
-
-    this.imageEffectRender.addImage(image, 0, false, true, true);
-
-    mat4.identity(this.view);
-    this.mouseListener = new MouseListener(this.imageEffectRender.getCanvas());
+    this.mouseListener = new MouseListener(this.renderer.getCanvas());
   }
 
-  private getShader(): string {
-    return 'uniform mat4 uInvViewProjection;\
-      uniform float uBarrelDistortion;\
-      vec2 getEqUV(vec3 rd)\
-          {\
-           vec2 uv = vec2(atan(rd.z, rd.x), asin(rd.y));\
-        uv *= vec2(0.1591,0.3183);\
-        uv.y += 0.5;\
-        return fract(uv);\
-          }\
-          void mainImage( out vec4 c, vec2 p )\
-          {\
-              vec2 uv = vUV0 * 2. - 1.;\
-             float r2 = dot(uv,uv);\
-            uv.xy *= 1.0 + uBarrelDistortion * r2;\
-              vec4 rd = vec4(uv, 1., 1.);\
-              rd = uInvViewProjection * rd;\
-              rd.xyz = normalize(rd.xyz);\
-              c.xyz = texture(iChannel0, getEqUV(rd.xyz)).xyz;\
-      }';
-  }
+  public update(rotation: quat) {
+    this.mouseListener.update();
 
-  public init(): void {
-    this.play();
-  }
+    // aspect ratio can change
+    const aspect = this.renderer.getAspect();
+    const degToRad = Math.PI / 180;
+    const z = .5 / Math.tan(this.renderer.getFov() * (.5 * degToRad));
+    const fovH = Math.atan2(aspect * .5, z) * (2 * 180 / Math.PI);
 
-  private updateViewProjection(fov: number, aspect: number): void {
-    mat4.perspective(this.projection, fov * (Math.PI / 180.0), aspect, 0.01, 100);
-    mat4.fromQuat(this.view, this.rotation);
-    mat4.multiply(this.viewProjection, this.projection, this.view);
-  }
+    if (this.mouseListener.getMouseDown()) {
+      const ms = this.mouseListener.getNormalizedVelocity();
+      this.rotateSpeedX = DefaultRotationController.lerp(-ms[0] * fovH, this.rotateSpeedX, this.settings.smoothness);
+      this.rotateSpeedY = DefaultRotationController.lerp(ms[1] * this.renderer.getFov(), this.rotateSpeedY, this.settings.smoothness);
+    } else {
+      this.rotateSpeedX *= this.settings.rotateInertia;
+      this.rotateSpeedY *= this.settings.rotateInertia;
+    }
 
-  private static smoothstep01(xi: number): number {
-    let x = xi;
-    if (x < 0) x = 0;
-    if (x > 1) x = 1;
-    return x * x * (3 - 2 * x);
+    quat.identity(this.rotateY);
+    quat.identity(this.rotateX);
+    quat.rotateY(this.rotateY, this.rotateY, this.rotateSpeedX * degToRad);
+    quat.rotateX(this.rotateX, this.rotateX, -this.rotateSpeedY * degToRad);
+    // https://gamedev.stackexchange.com/questions/136174/im-rotating-an-object-on-two-axes-so-why-does-it-keep-twisting-around-the-thir
+    // note that the order is switched here:
+    quat.multiply(rotation, this.rotateX, rotation);
+    quat.multiply(rotation, rotation, this.rotateY);
   }
 
   private static lerp(a: number, b: number, i: number): number {
     return ((1 - i) * a) + (i * b);
   }
 
-  public update(): void {
-    if (this.isDisposed() || !this.animationLoop) return;
+  dispose() {
+    if (!this.isDisposed()) {
+      this.mouseListener.dispose();
+    }
+    super.dispose();
+  }
+}
 
-    this.mouseListener.update();
+export default class PanoramaRenderer extends sengDisposable {
+  private settings: any;
+  private imageEffectRenderer: ImageEffectRenderer | null;
+  private imageEffectRendererBuffer: ImageEffectRendererBuffer;
 
-    // aspect ratio can change
-    const c = this.imageEffectRender.getCanvas();
-    const aspect = c.width / c.height;
-    const degToRad = Math.PI / 180;
-    const z = .5 / Math.tan(this.fovV * (.5 * degToRad));
-    const fovH = Math.atan2(aspect * .5, z) * (2 * 180 / Math.PI);
+  private transitionProgress: number = 1;
+  private animationLoop: boolean = false;
 
-    if (this.mouseListener.getMouseDown()) {
-      const ms = this.mouseListener.getNormalizedVelocity();
-      this.rotateSpeedX = PanoramaRenderer.lerp(-ms[0] * fovH, this.rotateSpeedX, this.smoothness);
-      this.rotateSpeedY = PanoramaRenderer.lerp(ms[1] * this.fovV, this.rotateSpeedY, this.smoothness);
+  private rotationController: IRotationController;
+
+  private rotation: quat = quat.create();
+  private rotationStart: quat = quat.create();
+  private rotationEnd: quat = quat.create();
+
+  private projection: mat4 = mat4.create();
+  private view: mat4 = mat4.create();
+  private viewProjection: mat4 = mat4.create();
+  private invViewProjection: mat4 = mat4.create();
+
+  private screenPos: vec4 = vec4.create();
+  private tempM3: mat3 = mat3.create();
+  private tempV3: vec3 = vec3.create();
+  private tempV4: vec4 = vec4.create();
+  private canvas: HTMLCanvasElement | null;
+
+  // wide fov will distort. This can be countered using barrel distortion
+  // http://www.decarpentier.nl/downloads/lensdistortion-webgl/lensdistortion-webgl.html
+
+  /**
+   * Requires a HTMLCanvasElement and a shader program as a plain text string
+   *
+   * @param canvasParent: Container of canvas
+   * @param image (optional): Image element for panorama. You can set an image later.
+   * @param settings: { // (optional)
+   *          fov: 60,
+   *          barrelDistortion: 0.1,
+   *          shader: false, // shader (string) used to render the panorama
+   *          imageEffectRendererBuffer: false, // set panorama uniforms to shader of this buffer.
+   *          canvas: false, // set canvas (used for aspect ratio) by hand
+   *          rotationController: false, // custom rotation controller
+   *          rotationControllerSettings: {}, // settings for rotation controller
+   */
+  constructor(canvasParent: HTMLElement, image: HTMLImageElement | HTMLVideoElement | HTMLCanvasElement | null, settings: any = {}) {
+    super();
+    this.settings = Object.assign({
+      fov: 60,
+      barrelDistortion: 0.1,
+      shader: false,
+      imageEffectRendererBuffer: false,
+      canvas: false,
+      rotationController: false,
+      rotationControllerSettings: {},
+    }, settings);
+
+    if (!this.settings.imageEffectRendererBuffer) {
+      this.imageEffectRenderer = ImageEffectRenderer.createTemporary(canvasParent, this.getShader());
+      this.imageEffectRendererBuffer = this.imageEffectRenderer.getMainBuffer();
     } else {
-      this.rotateSpeedX *= this.inertia;
-      this.rotateSpeedY *= this.inertia;
+      this.imageEffectRendererBuffer = this.settings.imageEffectRendererBuffer;
     }
 
-    if (this.transitionProgress >= 1) {
-      quat.identity(this.rotateY);
-      quat.identity(this.rotateX);
-      quat.rotateY(this.rotateY, this.rotateY, this.rotateSpeedX * degToRad);
-      quat.rotateX(this.rotateX, this.rotateX, -this.rotateSpeedY * degToRad);
-      // https://gamedev.stackexchange.com/questions/136174/im-rotating-an-object-on-two-axes-so-why-does-it-keep-twisting-around-the-thir
-      // note that the order is switched here:
-      quat.multiply(this.rotation, this.rotateX, this.rotation);
-      quat.multiply(this.rotation, this.rotation, this.rotateY);
+    this.canvas = this.settings.canvas ? this.settings.canvas : canvasParent ? canvasParent.querySelector('canvas') : null;
+    if (!this.canvas) {
+      throw new Error('Unable to find panorama canvas');
+    }
 
+    if (this.settings.rotationController) {
+      this.rotationController = this.settings.rotationController;
     } else {
+      this.rotationController = new DefaultRotationController();
+    }
+
+    this.rotationController.init(this, this.settings.rotationControllerSettings);
+    if (image) {
+      this.addImage(image);
+    }
+
+    mat4.identity(this.view);
+    quat.identity(this.rotation);
+  }
+
+  /**
+   * Init panorama and starts the animationFrame loop
+   */
+  public init(): void {
+    this.play();
+  }
+
+  /**
+   * Get field of view (in degrees)
+   */
+  public getFov(): number {
+    return this.settings.fov;
+  }
+
+  /**
+   * Set field of view (in degrees)
+   *
+   * @param fov: Field of view
+   */
+  public setFov(fov: number): void {
+    this.settings.fov = fov;
+  }
+
+  /**
+   * Get Barrel Distortion
+   */
+  public getBarrelDistortion(): number {
+    return this.settings.barrelDistortion;
+  }
+
+  /**
+   * Set Barrel Distortion
+   *
+   * @param dist: Distortion
+   */
+  public setBarrelDistortion(dist: number): void {
+    this.settings.barrelDistortion = dist;
+  }
+
+  /**
+   * Get aspect ratio
+   */
+  public getAspect(): number {
+    return this.getCanvas().width / this.getCanvas().height;
+  }
+
+  /**
+   * Update rotation controller, set uniforms and draw panorama.
+   */
+  public update(): void {
+    if (this.isDisposed() || !this.animationLoop) return;
+    window.requestAnimationFrame(() => this.update());
+
+    this.rotationController.update(this.rotation);
+
+    if (this.transitionProgress < 1) {
       // assumes 60 fps
       this.transitionProgress += 0.016;
       quat.slerp(this.rotation, this.rotationStart, this.rotationEnd, PanoramaRenderer.smoothstep01(this.transitionProgress));
     }
-    this.updateViewProjection(this.fovV, aspect);
+    this.updateViewProjection(this.getFov(), this.getAspect());
     mat4.invert(this.invViewProjection, this.viewProjection);
 
+    this.getRendererBuffer().setUniformMatrix('uInvViewProjection', this.invViewProjection);
+    this.getRendererBuffer().setUniformFloat('uBarrelDistortion', this.getBarrelDistortion());
 
-    this.imageEffectRender.setUniformMatrix('uInvViewProjection', this.invViewProjection);
-    this.imageEffectRender.setUniformFloat('uBarrelDistortion', this.barrelDistortion);
-    this.imageEffectRender.draw();
-
-    window.requestAnimationFrame(() => this.update());
+    if (this.imageEffectRenderer) {
+      this.imageEffectRenderer.draw();
+    }
   }
 
+  /**
+   * Projects 3D world coordinate to normalized 2D screen position.
+   *
+   * @param worldPos: World position [x,y,z]
+   */
   public getProjectedPosition(worldPos: Float32Array): number[] {
     const s = this.screenPos;
     s[0] = worldPos[0];
@@ -282,7 +373,7 @@ export default class PanoramaRenderer extends sengDisposable {
 
     // the following does the inverse of the barrel distortion:
     const l = Math.sqrt(s[0] * s[0] + s[1] * s[1]);
-    const b = this.barrelDistortion;
+    const b = this.getBarrelDistortion();
     if (b * l > 0) {
       // Reinder magic
       const x0 = Math.pow(9 * b * b * l + Math.sqrt(3) * Math.sqrt(27 * b * b * b * b * l * l + 4 * b * b * b), 1 / 3);
@@ -300,6 +391,12 @@ export default class PanoramaRenderer extends sengDisposable {
     return [s[0], s[1], s[2]];
   }
 
+  /**
+   * Rotates camera to 3D world position.
+   *
+   * @param worldPos: World position [x,y,z]
+   * @param transitionDuration: Duration of camera rotation
+   */
   public lookAtPosition(worldPos: Float32Array, transitionDuration: number = 0) {
     // why the negation?
     vec3.set(this.tempV3, -worldPos[0], -worldPos[1], -worldPos[2]);
@@ -316,17 +413,28 @@ export default class PanoramaRenderer extends sengDisposable {
     }
   }
 
-  public get canvas() {
-    return this.imageEffectRender.getCanvas();
+  /**
+   * Get Canvas (used to calculate aspect ratio)
+   */
+  public getCanvas(): HTMLCanvasElement {
+    if (this.imageEffectRenderer) {
+      return this.imageEffectRenderer.getCanvas();
+    }
+    return this.canvas;
   }
 
-  // coordinates should be in 0 -> 1 range
+  /**
+   * Reconstruct world position from 2d screen position.
+   *
+   * @param xi: Normalized screen x-coordinate (0-1)
+   * @param yi: Normalized screen y-coordinate (0-1)
+   */
   public get3dPositionFrom2DPosition(xi: number, yi: number) {
     let x = xi * 2 - 1;
     let y = 1 - yi;
     y = y * 2 - 1;
     const r2 = x * x + y * y;
-    const distortion = 1 + this.barrelDistortion * r2;
+    const distortion = 1 + this.getBarrelDistortion() * r2;
     x *= distortion;
     y *= distortion;
     const rd = this.tempV4;
@@ -335,26 +443,94 @@ export default class PanoramaRenderer extends sengDisposable {
     return [rd[0], rd[1], rd[2]];
   }
 
+  /**
+   * Play the animationFrame loop
+   */
   public play(): void {
     this.animationLoop = true;
     this.update();
   }
 
+  /**
+   * Pause the animationFrame loop
+   */
   public pause(): void {
     this.animationLoop = false;
   }
 
+  /**
+   * Add image
+   *
+   * @param image: Image element
+   * @param flipY: Flip image vertical
+   * @param useMipMap: Use mipmaps. You can only use mipmaps if the image size is a power of two.
+   */
+  public addImage(
+    image: HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageEffectRendererBuffer,
+    flipY: boolean = true, useMipMap?: boolean): void {
+    this.getRendererBuffer().addImage(image, 0, true, true, flipY, useMipMap);
+  }
+
+  /**
+   * Update image
+   *
+   * @param image: Image element
+   * @param flipY: Flip image vertical
+   * @param useMipMap: Use mipmaps. You can only use mipmaps if the image size is a power of two.
+   */
   public updateImage(
-    image: HTMLImageElement | HTMLVideoElement | HTMLCanvasElement,
-    clampHorizontal: boolean = true,
-    clampVertical: boolean = true ): void {
-    this.imageEffectRender.updateImage(image, 0, clampHorizontal, clampVertical, true);
+    image: HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageEffectRendererBuffer,
+    flipY: boolean = true, useMipMap?: boolean): void {
+    this.getRendererBuffer().updateImage(image, 0, true, true, flipY, useMipMap);
+  }
+
+  /**
+   * Get renderbuffer used as rendertarget for the panorama. Panorama specific uniforms are set to the shader of this buffer.
+   */
+  public getRendererBuffer() {
+    return this.imageEffectRendererBuffer;
+  }
+
+  private updateViewProjection(fov: number, aspect: number): void {
+    mat4.perspective(this.projection, fov * (Math.PI / 180.0), aspect, 0.01, 100);
+    mat4.fromQuat(this.view, this.rotation);
+    mat4.multiply(this.viewProjection, this.projection, this.view);
+  }
+
+  private getShader(): string {
+    return this.settings.shader ? this.settings.shader : 'uniform mat4 uInvViewProjection;\
+      uniform float uBarrelDistortion;\
+      vec2 getEqUV(vec3 rd)\
+          {\
+           vec2 uv = vec2(atan(rd.z, rd.x), asin(rd.y));\
+        uv *= vec2(0.1591,0.3183);\
+        uv.y += 0.5;\
+        return fract(uv);\
+          }\
+          void mainImage( out vec4 c, vec2 p )\
+          {\
+              vec2 uv = vUV0 * 2. - 1.;\
+              float r2 = dot(uv,uv);\
+              uv.xy *= 1.0 + uBarrelDistortion * r2;\
+              vec4 rd = vec4(uv, 1., 1.);\
+              rd = uInvViewProjection * rd;\
+              rd.xyz = normalize(rd.xyz);\
+              c.xyz = texture(iChannel0, getEqUV(rd.xyz)).xyz;\
+      }';
+  }
+
+  private static smoothstep01(xi: number): number {
+    let x = xi;
+    if (x < 0) x = 0;
+    if (x > 1) x = 1;
+    return x * x * (3 - 2 * x);
   }
 
   dispose() {
     if (!this.isDisposed()) {
-      this.mouseListener.dispose();
-      ImageEffectRenderer.releaseTemporary(this.imageEffectRender);
+      if (this.imageEffectRenderer) {
+        ImageEffectRenderer.releaseTemporary(this.imageEffectRenderer);
+      }
     }
     super.dispose();
   }

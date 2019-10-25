@@ -1,4 +1,4 @@
-import {PanoramaRenderer} from '../../../src/';
+import { PanoramaRenderer } from '../../../src/';
 import ImageLoader from '../utils/ImageLoader';
 
 export default class Panorama {
@@ -9,7 +9,7 @@ export default class Panorama {
 
   constructor(wrapper: HTMLElement) {
     this.wrapper = wrapper;
-    ImageLoader.loadImages(['panorama.jpg']).then(this.init.bind(this));
+    ImageLoader.loadImages(['panorama_1.jpg']).then(this.init.bind(this));
   }
 
   private init(images: Array<HTMLImageElement>): void {
@@ -23,8 +23,8 @@ export default class Panorama {
     this.createHotspot(position);
     this.renderer.lookAtPosition(new Float32Array(position));
 
-    this.wrapper.onmousedown = (e) => {
-      const bounds = this.wrapper.querySelector('.canvas').getBoundingClientRect();
+    this.renderer.getCanvas().onmousedown = (e) => {
+      const bounds = this.renderer.getCanvas().getBoundingClientRect();
       const x = (e.clientX - bounds.left) / bounds.width;
       const y = (e.clientY - bounds.top) / bounds.height;
       if (x >= 0 && x <= 1 && y >= 0 && y <= 1) {
@@ -32,7 +32,7 @@ export default class Panorama {
         this.createHotspot(pos);
         this.renderer.lookAtPosition(new Float32Array(pos), 2);
       }
-    }
+    };
 
     this.tick();
   }
@@ -57,8 +57,8 @@ export default class Panorama {
       const screenPos = this.renderer.getProjectedPosition(worldPos);
 
       if (screenPos[2] > 0 && screenPos[0] >= 0 && screenPos[0] < 1 && screenPos[1] >= 0 && screenPos[1] < 1) {
-        const x = screenPos[0] * this.renderer.canvas.width - 5;
-        const y = screenPos[1] * this.renderer.canvas.height - 5;
+        const x = screenPos[0] * this.renderer.getCanvas().width - 5;
+        const y = screenPos[1] * this.renderer.getCanvas().height - 5;
 
         this.hotspotVisuals[i].style.left = x + 'px';
         this.hotspotVisuals[i].style.top = y + 'px';
