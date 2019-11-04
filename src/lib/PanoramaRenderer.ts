@@ -283,6 +283,8 @@ export default class PanoramaRenderer extends sengDisposable {
       this.imageEffectRenderer = ImageEffectRenderer.createTemporary(
         canvasParent,
         this.getShader(),
+        false,
+        true,
       );
       this.imageEffectRendererBuffer = this.imageEffectRenderer.getMainBuffer();
     } else {

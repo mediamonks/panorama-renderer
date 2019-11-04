@@ -1,15 +1,17 @@
 import {PanoramaRenderer} from '../../../src/';
 import ImageLoader from '../utils/ImageLoader';
-import { ImageEffectRenderer } from 'seng-effectrenderer';
-import { IRotationController } from '../../../src/lib/PanoramaRenderer';
+import {ImageEffectRenderer} from 'seng-effectrenderer';
+import {IRotationController} from '../../../src/lib/PanoramaRenderer';
+import {quat} from 'gl-matrix';
+
 const glitch = require('../shader/glitch.glsl');
 const panoramaMix = require('../shader/panoramaMix.glsl');
-import { quat} from 'gl-matrix';
 
 class AutoRotationController implements IRotationController {
-  private rotation:number = 0;
+  private rotation: number = 0;
 
-  public init() {}
+  public init() {
+  }
 
   public update(rotation: quat) {
     this.rotation += .01;
@@ -30,11 +32,11 @@ export default class PanoramaAdvanced {
   }
 
   private init(images: Array<HTMLImageElement>): void {
-    this.renderer = ImageEffectRenderer.createTemporary(this.wrapper.querySelector('.canvas'), glitch);
+    this.renderer = ImageEffectRenderer.createTemporary(this.wrapper.querySelector('.canvas'), glitch, false, true);
 
     this.renderer.addBuffer(0, panoramaMix);
-    this.renderer.getBuffer(0).addImage(images[0],0, true, true, true, false);
-    this.renderer.getBuffer(0).addImage(images[1],1, true, true, true, false);
+    this.renderer.getBuffer(0).addImage(images[0], 0, true, true, true, false);
+    this.renderer.getBuffer(0).addImage(images[1], 1, true, true, true, false);
 
     this.renderer.getMainBuffer().addImage(this.renderer.getBuffer(0), 0);
 
@@ -49,8 +51,8 @@ export default class PanoramaAdvanced {
     this.tick(0);
   }
 
-  private tick(time:number): void {
+  private tick(time: number): void {
     requestAnimationFrame((time) => this.tick(time));
-    this.panorama.getRendererBuffer().setUniformFloat('uMix', Math.abs(((time/10000) % 1) -.5) * 2);
+    this.panorama.getRendererBuffer().setUniformFloat('uMix', Math.abs(((time / 10000) % 1) - .5) * 2);
   }
 }
