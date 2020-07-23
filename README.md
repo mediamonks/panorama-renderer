@@ -33,11 +33,6 @@ mip mapping can be used. This will greatly improve the visual quality of the pan
 For more examples, please check the examples directory.
 
 
-## Documentation
-
-View the [generated documentation](http://mediamonks.github.io/seng-panoramarenderer/).
-
-
 ## Building
 
 In order to build seng-event, ensure that you have [Git](http://git-scm.com/downloads)
