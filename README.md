@@ -1,5 +1,4 @@
 [![Travis](https://img.shields.io/travis/mediamonks/seng-panoramarenderer.svg?maxAge=2592000)](https://travis-ci.org/mediamonks/seng-panoramarenderer)
-[![Code Climate](https://img.shields.io/codeclimate/github/mediamonks/seng-panoramarenderer.svg?maxAge=2592000)](https://codeclimate.com/github/mediamonks/seng-panoramarenderer)
 [![Coveralls](https://img.shields.io/coveralls/mediamonks/seng-panoramarenderer.svg?maxAge=2592000)](https://coveralls.io/github/mediamonks/seng-panoramarenderer?branch=master)
 [![npm](https://img.shields.io/npm/v/seng-panoramarenderer.svg?maxAge=2592000)](https://www.npmjs.com/package/seng-panoramarenderer)
 [![npm](https://img.shields.io/npm/dm/seng-panoramarenderer.svg?maxAge=2592000)](https://www.npmjs.com/package/seng-panoramarenderer)
@@ -75,11 +74,6 @@ before committing, so you can be sure that everything checks out.
 ## Contribute
 
 View [CONTRIBUTING.md](./CONTRIBUTING.md)
-
-
-## Changelog
-
-View [CHANGELOG.md](./CHANGELOG.md)
 
 
 ## Authors
