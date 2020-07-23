@@ -24,9 +24,12 @@ Simple Panorama example (make sure the images are preloaded first).
 ```ts
 import { PanoramaRenderer } from 'seng-panoramarenderer';
 
-const renderer = new PanoramaRenderer(wrapperElement, imageSrc);
+const renderer = new PanoramaRenderer(wrapperElement, imageElement);
 renderer.init();
 ```
+
+Note: when the height and width of the image are both a power of two (2048x1024 or 4096x2048 for example),
+mip mapping can be used. This will greatly improve the visual quality of the panorama.
 
 For more examples, please check the examples directory.
 

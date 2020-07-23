@@ -381,7 +381,8 @@ export default class PanoramaRenderer extends sengDisposable {
     this.updateViewProjection(this.getFov(), this.getAspect());
     mat4.invert(this.invViewProjection, this.viewProjection);
 
-    this.getRendererBuffer().setUniformMatrix('uInvViewProjection', this.invViewProjection);
+    this.getRendererBuffer().setUniformMatrix('uInvViewProjection', <Float32Array>this
+      .invViewProjection);
     this.getRendererBuffer().setUniformFloat('uBarrelDistortion', this.getBarrelDistortion());
 
     if (this.imageEffectRenderer) {
