@@ -1,7 +1,7 @@
 import { mat3, mat4, quat, vec3, vec4 } from 'gl-matrix';
 import { ImageEffectRenderer } from 'seng-effectrenderer';
 import sengDisposable from 'seng-disposable';
-import { ImageEffectRendererBuffer } from 'seng-effectrenderer/lib/ImageEffectRenderer';
+import { ImageEffectRendererBuffer } from 'seng-effectrenderer/lib/ImageEffectRendererBuffer';
 
 class MouseButton {
   public press: boolean = false; // currently pressed
