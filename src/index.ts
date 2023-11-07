@@ -1,1 +1,1 @@
-export { default as PanoramaRenderer } from './lib/PanoramaRenderer';
+export { default as PanoramaRenderer } from './lib/PanoramaRenderer.js';
