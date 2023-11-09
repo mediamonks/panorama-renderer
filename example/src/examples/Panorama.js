@@ -13,16 +13,16 @@ export default class Panorama {
 
       const position = {x: 0.5, y: 0.5, z: 1};
       this.createHotspot(position);
-      this.renderer.lookAtPosition(position);
+      this.renderer.lookAt(position);
 
       this.renderer.canvas.onmousedown = (e) => {
         const bounds = this.renderer.canvas.getBoundingClientRect();
         const x = (e.clientX - bounds.left) / bounds.width;
         const y = (e.clientY - bounds.top) / bounds.height;
         if (x >= 0 && x <= 1 && y >= 0 && y <= 1) {
-          const pos = this.renderer.get3dPositionFrom2DPosition({x, y});
+          const pos = this.renderer.screenToWorld({x, y});
           this.createHotspot(pos);
-          this.renderer.lookAtPosition(pos, 2);
+          this.renderer.lookAt(pos, 2);
         }
       };
 
@@ -45,9 +45,9 @@ export default class Panorama {
   tick() {
     for (let i = 0; i < this.hotspots.length; i++) {
       const worldPos = this.hotspots[i];
-      const screenPos = this.renderer.getProjectedPosition(worldPos);
+      const screenPos = this.renderer.worldToScreen(worldPos);
 
-      if (screenPos.x > 0 && screenPos.x < 1 && screenPos.y >= 0 && screenPos.y < 1) {
+      if (screenPos.z > 0 && screenPos.x > 0 && screenPos.x < 1 && screenPos.y >= 0 && screenPos.y < 1) {
         const x = screenPos.x * this.renderer.canvas.width - 5;
         const y = screenPos.y * this.renderer.canvas.height - 5;
 

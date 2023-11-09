@@ -50,11 +50,7 @@ export default class PanoramaRenderer {
   private projection = new Matrix4x4();
   private view = new Matrix4x4();
   private viewProjection = new Matrix4x4();
-
   private invViewProjection = new Matrix4x4();
-
-  private animationRequestId: number = -1;
-  private startTime: number = -1;
 
   // wide fov will distort. This can be countered using barrel distortion
   // http://www.decarpentier.nl/downloads/lensdistortion-webgl/lensdistortion-webgl.html
@@ -115,7 +111,7 @@ export default class PanoramaRenderer {
     this.renderer.tick(func);
   }
 
-  public getProjectedPosition(worldPos: Vec3): Vec2 {
+  public worldToScreen(worldPos: Vec3): Vec3 {
     const s = new Vector4(worldPos.x, worldPos.y, worldPos.z, 1);
 
     s.transform(this.viewProjection);
@@ -142,10 +138,10 @@ export default class PanoramaRenderer {
     s.x = s.x * 0.5 + 0.5;
     s.y = s.y * -0.5 + 0.5;
 
-    return {x: s.x, y: s.y};
+    return {x: s.x, y: s.y, z: s.z};
   }
 
-  public lookAtPosition(worldPos: Vec3, duration: number = 0, ease: (t: number) => number = smoothstep01) {
+  public lookAt(worldPos: Vec3, duration: number = 0, ease: (t: number) => number = smoothstep01) {
     const p = new Vector3(worldPos.x, worldPos.y, worldPos.z);
 
     this.transitionEase = ease;
@@ -167,7 +163,7 @@ export default class PanoramaRenderer {
     return this.renderer.canvas;
   }
 
-  public get3dPositionFrom2DPosition(p: Vec2) {
+  public screenToWorld(p: Vec2) {
     let x = p.x * 2 - 1;
     let y = 1 - p.y;
     y = y * 2 - 1;
@@ -224,10 +220,6 @@ export default class PanoramaRenderer {
 
     renderInstance.setUniformMatrix('uInvViewProjection', new Float32Array(this.invViewProjection.m));
     renderInstance.setUniformFloat('uBarrelDistortion', this.barrelDistortion);
-
-    // if (this.renderer) {
-    //   this.renderer.drawFrame();
-    // }
   }
 
   private updateViewProjection(fov: number, aspect: number): void {
@@ -274,7 +266,6 @@ void mainImage( out vec4 c, vec2 p ) {
   }
 
   public destruct() {
-    cancelAnimationFrame(this.animationRequestId);
     if (this.renderer instanceof RendererInstance) {
       ImageEffectRenderer.releaseTemporary(this.renderer);
     }
