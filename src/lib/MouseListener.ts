@@ -72,7 +72,7 @@ export default class MouseListener {
     return this.mouseVelocity;
   }
 
-  public getMouseDown(): boolean {
+  public get mouseDown(): boolean {
     return this.buttons[0].press;
   }
 

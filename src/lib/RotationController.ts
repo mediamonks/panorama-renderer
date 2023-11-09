@@ -1,38 +1,45 @@
 import PanoramaRenderer from "./PanoramaRenderer.js";
 import Quaternion from "./Quaternion.js";
 import MouseListener from "./MouseListener.js";
+import {lerp} from "./Utils.js";
+import type {Quat} from "./Math.js";
+
+export type RotationControllerOptions = {
+  inertia: number,
+  slowDownTime: number,
+}
 
 export interface IRotationController {
-  init(renderer: PanoramaRenderer, settings: any): void;
+  init(renderer: PanoramaRenderer, options: Partial<RotationControllerOptions>): void;
 
-  update(rotation: Quaternion): Quaternion;
+  update(dt: number, rotation: Quat): Quat;
 }
 
 export default class RotationController implements IRotationController {
-  private options: any;
+  private static defaultOptions: RotationControllerOptions = {
+    inertia: 0.5,
+    slowDownTime: 0.5,
+  };
+  private options: RotationControllerOptions = {...RotationController.defaultOptions};
+
   private renderer!: PanoramaRenderer;
   private mouseListener!: MouseListener;
 
-  private rotateSpeedX: number = 0;
-  private rotateSpeedY: number = 0;
-  private rotateX = new Quaternion();
-  private rotateY = new Quaternion();
+  private lastUserRotateSpeed: { x: number, y: number } = {x: 0, y: 0};
+  private currentRotateSpeed: { x: number, y: number } = {x: 0, y: 0};
+  private slowDownTimer: number = 0;
 
-  public init(renderer: PanoramaRenderer, options: any): void {
+  public init(renderer: PanoramaRenderer, options: Partial<RotationControllerOptions>): void {
     this.renderer = renderer;
     this.options = {
-      ...
-        {
-          rotateInertia: 0.95,
-          smoothness: 0.75,
-        },
+      ...RotationController.defaultOptions,
       ...options
     };
 
     this.mouseListener = new MouseListener(this.renderer.canvas);
   }
 
-  public update(rotation: Quaternion) {
+  public update(dt: number, rotation: Quat): Quat {
     this.mouseListener.update();
 
     // aspect ratio can change
@@ -41,35 +48,37 @@ export default class RotationController implements IRotationController {
     const z = 0.5 / Math.tan(this.renderer.fov * (0.5 * degToRad));
     const fovH = Math.atan2(aspect * 0.5, z) * (2 * 180 / Math.PI);
 
-    if (this.mouseListener.getMouseDown()) {
+    if (this.mouseListener.mouseDown) {
       const ms = this.mouseListener.getNormalizedVelocity();
-      this.rotateSpeedX = RotationController.lerp(
-        -ms[0] * fovH,
-        this.rotateSpeedX,
-        this.options.smoothness,
+      this.lastUserRotateSpeed.x = lerp(
+        -ms[0] * fovH * (1 / dt),
+        this.currentRotateSpeed.x,
+        this.options.inertia,
       );
-      this.rotateSpeedY = RotationController.lerp(
-        ms[1] * this.renderer.fov,
-        this.rotateSpeedY,
-        this.options.smoothness,
+      this.lastUserRotateSpeed.y = lerp(
+        ms[1] * this.renderer.fov * (1 / dt),
+        this.currentRotateSpeed.y,
+        this.options.inertia,
       );
-    } else {
-      this.rotateSpeedX *= this.options.rotateInertia;
-      this.rotateSpeedY *= this.options.rotateInertia;
+      this.slowDownTimer = this.options.slowDownTime;
     }
 
-    this.rotateY.identity();
-    this.rotateX.identity();
-    this.rotateY.rotateY(this.rotateSpeedX * degToRad);
-    this.rotateX.rotateX(-this.rotateSpeedY * degToRad);
+    const t = this.options.slowDownTime > 0 ? this.slowDownTimer / this.options.slowDownTime : 0;
+
+    this.currentRotateSpeed.x = lerp(0, this.lastUserRotateSpeed.x, t);
+    this.currentRotateSpeed.y = lerp(0, this.lastUserRotateSpeed.y, t);
+
+    this.slowDownTimer = Math.max(0, this.slowDownTimer - dt);
+
+    const rotateY = new Quaternion().rotateY(this.currentRotateSpeed.x * degToRad * dt);
+    const rotateX = new Quaternion().rotateX(-this.currentRotateSpeed.y * degToRad * dt);
     // https://gamedev.stackexchange.com/questions/136174/im-rotating-an-object-on-two-axes-so-why-does-it-keep-twisting-around-the-thir
     // note that the order is switched here:
-    rotation = Quaternion.multiply(this.rotateX, rotation);
-    return Quaternion.multiply(rotation, this.rotateY);
-  }
+    let ret = Quaternion.multiply(rotateX, new Quaternion(rotation.x, rotation.y, rotation.z, rotation.w));
+    ret = Quaternion.multiply(ret, rotateY);
 
-  private static lerp(a: number, b: number, i: number): number {
-    return (1 - i) * a + i * b;
+    // todo clamp max x-rotation
+    return ret as Quat;
   }
 
   public destruct() {
