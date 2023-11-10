@@ -15,7 +15,7 @@ class AutoRotationController {
   }
 
   update(dt, rotation) {
-    this.rotation += .1 * dt;
+    this.rotation += .2 * dt;
     return rotateQuaternionY(identityQuaternion(), this.rotation);
   }
 }
