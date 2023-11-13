@@ -25,7 +25,7 @@ export default class RotationController implements IRotationController {
   private static defaultOptions: RotationControllerOptions = {
     inertia: 0.5,
     slowDownTime: 0.5,
-    clampXRotation: [-1, 1],
+    clampXRotation: [-0.5, 0.5],
     clampYRotation: undefined,
     userInteractions: true,
   };
@@ -47,9 +47,6 @@ export default class RotationController implements IRotationController {
     };
 
     this.mouseListener = new MouseListener(this.renderer.canvas);
-
-    console.log(eulerToQuat({x: 0, y: 2, z: 0.5}));
-    console.log(quatToEuler(eulerToQuat({x: 0, y: 2, z: 0.5})));
   }
 
   public update(dt: number, rotation: Quat, animated: boolean): Quat {
@@ -87,7 +84,7 @@ export default class RotationController implements IRotationController {
       const euler = this.euler;
       euler.x -= this.currentRotateSpeed.y * dt;
       euler.y += this.currentRotateSpeed.x * dt;
-      // euler.z = 0;
+      euler.z = 0;
 
       if (this.options.clampXRotation) {
         euler.x = Math.min(Math.max(euler.x, this.options.clampXRotation[0]), this.options.clampXRotation[1]);
@@ -96,8 +93,7 @@ export default class RotationController implements IRotationController {
       return eulerToQuat(euler);
     } else {
       this.euler = quatToEuler(rotation);
-      // this.euler.z = 0;
-      return eulerToQuat(this.euler);
+      return rotation;
     }
   }
 
