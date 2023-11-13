@@ -1,4 +1,5 @@
 import type Quaternion from "./Quaternion.js";
+import Vector3 from "./Vector3.js";
 
 
 export default class Matrix3x3 {
@@ -364,5 +365,33 @@ export default class Matrix3x3 {
     out[7] = a[9];
     out[8] = a[10];
     return out;
+  }
+
+  public getEulerYXZ(): Vector3 {
+    const m = this.m;
+    let x;
+    let y;
+    let z;
+
+    const singularityRange = 0.00001;
+
+    // Note, x = asin(m[7]) so m[7] = sin(x), so m[7] can never be larger than 1 or smaller than -1
+    if (m[7] < -1 + singularityRange) {
+      // singularity at x = +90 degrees
+      x = Math.PI / 2;
+      y = Math.atan2(m[3], m[0]);
+      z = 0;
+    } else if (m[7] > 1 - singularityRange) {
+      // singularity at x = -90 degrees
+      x = -Math.PI / 2;
+      y = -Math.atan2(m[3], m[0]);
+      z = 0;
+    } else {
+      x = Math.asin(-m[7]);
+      y = Math.atan2(m[6], m[8]);
+      z = Math.atan2(m[1], m[4]);
+    }
+
+    return new Vector3(x, y, z);
   }
 }

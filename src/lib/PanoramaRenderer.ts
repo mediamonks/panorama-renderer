@@ -199,8 +199,9 @@ export default class PanoramaRenderer {
   }
 
   private update(dt: number): void {
-    const q = this.rotationController.update(dt, this.rotation);
-    this.rotation = new Quaternion(q.x, q.y, q.z, q.w);
+
+    const q = this.rotationController.update(dt, this.rotation, this.transitionProgress < 1);
+    this.rotation.setValues(q.x, q.y, q.z, q.w);
 
     if (this.transitionProgress < 1) {
       // assumes 60 fps
