@@ -3,7 +3,7 @@ import {
   RendererBuffer,
   RendererInstance
 } from "@mediamonks/image-effect-renderer";
-import type {IRotationController} from "./RotationController.js";
+import type {IRotationController, RotationControllerOptions} from "./RotationController.js";
 import RotationController from "./RotationController.js";
 import Matrix4x4 from "./Matrix4x4.js";
 import Quaternion from "./Quaternion.js";
@@ -14,25 +14,26 @@ import type {Vec2, Vec3} from "./Math.js";
 import Vector4 from "./Vector4.js";
 
 export type PanoramaRendererOptions = Partial<ImageEffectRendererOptions> & {
-  fov: number,
+  fov: number, // in radians
   barrelDistortion: number,
   shader: string | false,
   renderer: RendererInstance | false,
   rotationController: RotationController | false,
   controlledRendererInstance: RendererInstance | false,
+  rotationControllerOptions: Partial<RotationControllerOptions>,
 };
 
 export default class PanoramaRenderer {
   private options: PanoramaRendererOptions;
   private static defaultOptions: PanoramaRendererOptions = {
     loop: true,
-    fov: 60,
+    fov: 1,
     barrelDistortion: 0.1,
     shader: false,
     renderer: false,
     rotationController: false,
     controlledRendererInstance: false,
-    // rotationControllerSettings: {},
+    rotationControllerOptions: {},
   }
 
   private renderer: RendererInstance;
@@ -79,7 +80,7 @@ export default class PanoramaRenderer {
       this.rotationController = new RotationController();
     }
 
-    this.rotationController.init(this, {});
+    this.rotationController.init(this, this.options.rotationControllerOptions);
     if (image) {
       this.setImage(0, image, {flipY: true, clampX: false, clampY: true, useMipmap: true});
     }
@@ -223,16 +224,17 @@ export default class PanoramaRenderer {
   }
 
   private updateViewProjection(fov: number, aspect: number): void {
-    Matrix4x4.perspective(this.projection, fov * (Math.PI / 180.0), aspect, 0.01, 100);
+    Matrix4x4.perspective(this.projection, fov, aspect, 0.01, 100);
     Matrix4x4.fromQuat(this.view, this.rotation);
     Matrix4x4.multiply(this.viewProjection, this.projection, this.view);
     Matrix4x4.invert(this.invViewProjection, this.viewProjection);
   }
 
   private get shader(): string {
-    return this.options.shader
-      ? this.options.shader
-      : `
+    return this.options.shader ? this.options.shader : PanoramaRenderer.defaultShader;
+  }
+
+  public static defaultShader: string = `
 uniform mat4 uInvViewProjection;
 uniform float uBarrelDistortion;
 
@@ -263,7 +265,6 @@ void mainImage( out vec4 c, vec2 p ) {
   c.xyz = mix(col1, col2, step(abs(uv2.x), 0.25));
   c.w = 1.;
 }`;
-  }
 
   public destruct() {
     if (this.renderer instanceof RendererInstance) {

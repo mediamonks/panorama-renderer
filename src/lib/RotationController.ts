@@ -3,10 +3,13 @@ import Quaternion from "./Quaternion.js";
 import MouseListener from "./MouseListener.js";
 import {lerp} from "./Utils.js";
 import type {Quat} from "./Math.js";
+import {clampXRotation} from "./Math.js";
 
 export type RotationControllerOptions = {
   inertia: number,
   slowDownTime: number,
+  clampXRotation: number[] | undefined,
+  clampYRotation: number[] | undefined
 }
 
 export interface IRotationController {
@@ -19,6 +22,8 @@ export default class RotationController implements IRotationController {
   private static defaultOptions: RotationControllerOptions = {
     inertia: 0.5,
     slowDownTime: 0.5,
+    clampXRotation: undefined, // [-Math.PI, Math.PI],
+    clampYRotation: undefined
   };
   private options: RotationControllerOptions = {...RotationController.defaultOptions};
 
@@ -44,9 +49,8 @@ export default class RotationController implements IRotationController {
 
     // aspect ratio can change
     const aspect = this.renderer.aspectRatio;
-    const degToRad = Math.PI / 180;
-    const z = 0.5 / Math.tan(this.renderer.fov * (0.5 * degToRad));
-    const fovH = Math.atan2(aspect * 0.5, z) * (2 * 180 / Math.PI);
+    const z = 0.5 / Math.tan(this.renderer.fov * 0.5);
+    const fovH = Math.atan2(aspect * 0.5, z) * 2;
 
     if (this.mouseListener.mouseDown) {
       const ms = this.mouseListener.getNormalizedVelocity();
@@ -70,15 +74,19 @@ export default class RotationController implements IRotationController {
 
     this.slowDownTimer = Math.max(0, this.slowDownTimer - dt);
 
-    const rotateY = new Quaternion().rotateY(this.currentRotateSpeed.x * degToRad * dt);
-    const rotateX = new Quaternion().rotateX(-this.currentRotateSpeed.y * degToRad * dt);
+    const rotateY = new Quaternion().rotateY(this.currentRotateSpeed.x * dt);
+    const rotateX = new Quaternion().rotateX(-this.currentRotateSpeed.y * dt);
     // https://gamedev.stackexchange.com/questions/136174/im-rotating-an-object-on-two-axes-so-why-does-it-keep-twisting-around-the-thir
     // note that the order is switched here:
     let ret = Quaternion.multiply(rotateX, new Quaternion(rotation.x, rotation.y, rotation.z, rotation.w));
     ret = Quaternion.multiply(ret, rotateY);
 
-    // todo clamp max x-rotation
-    return ret as Quat;
+    let q = ret as Quat;
+    if (this.options.clampXRotation) {
+      q = clampXRotation(q, this.options.clampXRotation[0], this.options.clampXRotation[1]);
+    }
+
+    return q;
   }
 
   public destruct() {

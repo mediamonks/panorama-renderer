@@ -1,10 +1,10 @@
 import {PanoramaRenderer} from '../../../dist/';
-import {rotateQuaternionY, identityQuaternion} from '../../../dist/';
 
 import glitch from '../shader/glitch.glsl';
 import panoramaMix from '../shader/panoramaMix.glsl';
 import ImageLoader from "../utils/ImageLoader";
 import {ImageEffectRenderer} from "@mediamonks/image-effect-renderer";
+import {quatIdentity, quatRotateY} from "../../../dist/";
 
 class AutoRotationController {
   constructor() {
@@ -16,7 +16,7 @@ class AutoRotationController {
 
   update(dt, rotation) {
     this.rotation += .2 * dt;
-    return rotateQuaternionY(identityQuaternion(), this.rotation);
+    return quatRotateY(quatIdentity(), this.rotation);
   }
 }
 
