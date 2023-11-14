@@ -1,24 +1,20 @@
+import type {Vec2} from "./Math.js";
+
 class MouseButton {
   public press: boolean = false; // currently pressed
   public down: boolean = false; // moment of press start
-  public oldDown: boolean = false;
-  public hit: boolean = false;
   public downTime: number = 0;
 }
 
 export default class MouseListener {
-  private canvas: HTMLCanvasElement;
-  private mousePos: Float32Array = new Float32Array([0, 0]);
-  private previousMousePos: Float32Array = new Float32Array([0, 0]);
-  private mouseVelocity: Float32Array = new Float32Array([0, 0]);
-  private normalized: Float32Array = new Float32Array([0, 0]);
-  private mouseClickCallbacks: any[] = [];
+  private readonly canvas: HTMLCanvasElement;
+  private mousePos: Vec2 = {x: 0, y: 0};
+  private previousMousePos: Vec2 = {x: 0, y: 0};
+  private mouseVelocity: Vec2 = {x: 0, y: 0};
+  private normalized: Vec2 = {x: 0, y: 0};
+  private mouseClickCallbacks: (() => void)[] = [];
   private buttons: MouseButton[] = [];
   private resetSpeed: boolean = false;
-
-  private touchMoveListener: any;
-  private endListener: any;
-  private mouseMoveListener: any;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -27,28 +23,34 @@ export default class MouseListener {
       this.buttons.push(new MouseButton());
     }
 
-    this.touchMoveListener = (e: { targetTouches: any[]; }) => this.setMouse(e.targetTouches[0]);
-    this.mouseMoveListener = (e: any) => this.setMouse(e);
-    this.endListener = () => {
-      this.buttons[0].press = false;
-    };
-
-    this.canvas.addEventListener('touchstart', this.onMouseStart, false);
-    this.canvas.addEventListener('touchmove', this.touchMoveListener, false);
-    this.canvas.addEventListener('touchend', this.endListener, false);
-    this.canvas.addEventListener('touchcancel', this.endListener, false);
-    this.canvas.addEventListener('mousedown', this.onMouseStart, false);
-    this.canvas.addEventListener('mousemove', this.mouseMoveListener, false);
-    this.canvas.addEventListener('mouseup', this.endListener, false);
-    this.canvas.addEventListener('mousecancel', this.endListener, false);
-    this.canvas.addEventListener('mouseout', this.endListener, false);
+    this.canvas.addEventListener('touchstart', this.onMouseStart.bind(this), false);
+    this.canvas.addEventListener('touchmove', this.touchMoveListener.bind(this), false);
+    this.canvas.addEventListener('touchend', this.endListener.bind(this), false);
+    this.canvas.addEventListener('touchcancel', this.endListener.bind(this), false);
+    this.canvas.addEventListener('mousedown', this.onMouseStart.bind(this), false);
+    this.canvas.addEventListener('mousemove', this.mouseMoveListener.bind(this), false);
+    this.canvas.addEventListener('mouseup', this.endListener.bind(this), false);
+    this.canvas.addEventListener('mousecancel', this.endListener.bind(this), false);
+    this.canvas.addEventListener('mouseout', this.endListener.bind(this), false);
   }
 
-  private onMouseStart = (event: any): void => {
+  private touchMoveListener(e: TouchEvent) {
+    this.setMouse(e.targetTouches[0]);
+  }
+
+  private mouseMoveListener(e: MouseEvent) {
+    this.setMouse(e);
+  }
+
+  private endListener() {
+    this.buttons[0].press = false;
+  }
+
+  private onMouseStart(event: TouchEvent | MouseEvent) {
     event.preventDefault();
 
     let isTouch = false;
-    if (window['TouchEvent'] && event instanceof TouchEvent) {
+    if (event instanceof TouchEvent) {
       isTouch = true;
       this.setMouse((<TouchEvent>event).targetTouches[0]);
     } else {
@@ -58,57 +60,57 @@ export default class MouseListener {
     this.resetSpeed = true;
     this.buttons[isTouch ? 0 : event.which - 1].press = true;
 
-    for (let i = 0; i < this.mouseClickCallbacks.length; i++) {
-      this.mouseClickCallbacks[i].call(this);
-    }
-  };
-
-  private setMouse(event: any): void {
-    this.mousePos[0] = event.pageX;
-    this.mousePos[1] = event.pageY;
+    this.mouseClickCallbacks.forEach((callback) => {
+      callback();
+    });
   }
 
-  public getNormalizedVelocity(): Float32Array {
-    return this.mouseVelocity;
+  private setMouse(event: MouseEvent | Touch): void {
+    this.mousePos.x = event.pageX;
+    this.mousePos.y = event.pageY;
+  }
+
+  public get normalizedVelocity(): Vec2 {
+    return {...this.mouseVelocity};
   }
 
   public get mouseDown(): boolean {
     return this.buttons[0].press;
   }
 
-  public update(): void {
-    this.normalized[0] = this.mousePos[0] / this.canvas.clientWidth;
-    this.normalized[1] = this.mousePos[1] / this.canvas.clientHeight;
+  public click(callback: () => void) {
+    this.mouseClickCallbacks.push(callback);
+  }
+
+  public update(dt: number): void {
+    this.normalized.x = this.mousePos.x / this.canvas.clientWidth;
+    this.normalized.y = this.mousePos.y / this.canvas.clientHeight;
 
     if (this.resetSpeed) {
       this.resetSpeed = false;
-      this.mouseVelocity[0] = 0;
-      this.mouseVelocity[1] = 0;
+      this.mouseVelocity.x = 0;
+      this.mouseVelocity.y = 0;
     } else {
-      this.mouseVelocity[0] = this.normalized[0] - this.previousMousePos[0];
-      this.mouseVelocity[1] = this.normalized[1] - this.previousMousePos[1];
+      this.mouseVelocity.x = this.normalized.x - this.previousMousePos.x;
+      this.mouseVelocity.y = this.normalized.y - this.previousMousePos.y;
     }
-    this.previousMousePos[0] = this.normalized[0];
-    this.previousMousePos[1] = this.normalized[1];
+    this.previousMousePos.x = this.normalized.x;
+    this.previousMousePos.y = this.normalized.y;
 
     // this section makes sure a drag is not used as a click
     // when the mouse is released after a press longer than 0.25 sec, it is not a click
     for (let i = 0; i < 3; i++) {
       const button: MouseButton = this.buttons[i];
-      button.hit = false;
       button.down = false;
 
       if (this.buttons[i].press) {
         if (button.downTime === 0) {
           button.down = true;
         }
-        button.downTime++;
+        button.downTime += dt;
       } else {
-        button.hit = button.downTime < 15 && button.oldDown;
         button.downTime = 0;
       }
-
-      button.oldDown = button.press;
     }
   }
 

@@ -1,17 +1,14 @@
 {
   "name": "@mediamonks/panorama-renderer",
   "version": "1.0.0",
-  "description": "The image-effect-renderer is lightweight package that allows you to run WebGL fragment shaders in your website using WebGL. It can be used to apply effects to HTML image or video sources.",
+  "description": "The panorama-renderer is a lightweight package that allows you to render equirectangular panoramas using WebGL.",
   "keywords": [
     "fragment shader",
     "webgl",
-    "image",
-    "video",
-    "effect",
-    "shadertoy",
-    "glsl",
-    "shader",
-    "oneshader"
+    "panorama",
+    "360",
+    "equirectangular",
+    "equirectangular panorama"
   ],
   "repository": "git@github.com:mediamonks/panorama-renderer.git",
   "author": "Reinder Nijhoff <reinder@mediamonks.com>",

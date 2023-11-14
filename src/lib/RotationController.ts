@@ -73,7 +73,7 @@ export default class RotationController implements IRotationController {
   }
 
   public update(dt: number, rotation: Quat, animated: boolean): Quat {
-    this.mouseListener.update();
+    this.mouseListener.update(dt);
 
     // aspect ratio can change
     const aspect = this.renderer.aspectRatio;
@@ -81,14 +81,14 @@ export default class RotationController implements IRotationController {
     const fovH = Math.atan2(aspect * 0.5, z) * 2;
 
     if (this.mouseListener.mouseDown) {
-      const ms = this.mouseListener.getNormalizedVelocity();
+      const ms = this.mouseListener.normalizedVelocity;
       this.lastUserRotateSpeed.x = lerp(
-        -ms[0] * fovH * (1 / dt),
+        -ms.x * fovH * (1 / dt),
         this.currentRotateSpeed.x,
         this.options.inertia,
       );
       this.lastUserRotateSpeed.y = lerp(
-        ms[1] * this.renderer.fov * (1 / dt),
+        ms.y * this.renderer.fov * (1 / dt),
         this.currentRotateSpeed.y,
         this.options.inertia,
       );
