@@ -10,7 +10,7 @@ import type {Mat4, Quat, Vec2, Vec3, Vec4} from "./Math.js";
 import {
   mat3LookAt,
   mat3ToMat4,
-  mat3ToQuat,
+  mat3ToQuat, mat4Identity,
   mat4Inverse,
   mat4Multiply,
   mat4Perspective,
@@ -20,6 +20,17 @@ import {
   vec4Transform
 } from "./Math.js";
 
+/**
+ * @typedef {Object} PanoramaRendererOptions
+ * @property {Partial<ImageEffectRendererOptions>} - The configuration options for the image effect renderer.
+ * @property {number} fov - The field of view for the panorama viewer, in radians.
+ * @property {number} barrelDistortion - The amount of barrel distortion to apply to the panorama.
+ * @property {string | false} shader - The shader to use for rendering the panorama. If false, a default shader is used.
+ * @property {RendererInstance | false} renderer - The renderer instance to use for rendering the panorama. If false, a new instance is created.
+ * @property {RotationController | false} rotationController - The controller to use for handling rotations. If false, a new controller is created.
+ * @property {RendererInstance | false} controlledRendererInstance - The render buffer being controlled by the rotation controller. If false, a new instance is created.
+ * @property {Partial<RotationControllerOptions>} rotationControllerOptions - Additional configuration options for the rotation controller.
+ */
 export type PanoramaRendererOptions = Partial<ImageEffectRendererOptions> & {
   fov: number, // in radians
   barrelDistortion: number,
@@ -55,13 +66,21 @@ export default class PanoramaRenderer {
   private rotationStart = quatIdentity();
   private rotationEnd = quatIdentity();
 
-  private projection: Mat4 = [];
-  private view: Mat4 = [];
-  private viewProjection: Mat4 = [];
-  private invViewProjection: Mat4 = [];
+  private projection: Mat4 = mat4Identity();
+  private view: Mat4 = mat4Identity();
+  private viewProjection: Mat4 = mat4Identity();
+  private invViewProjection: Mat4 = mat4Identity();
 
   // wide fov will distort. This can be countered using barrel distortion
   // http://www.decarpentier.nl/downloads/lensdistortion-webgl/lensdistortion-webgl.html
+
+  /**
+   * @constructor
+   * @description Constructs a PanoramaRenderer instance.
+   * @param {HTMLElement} container - The HTML element that will contain the panorama.
+   * @param {HTMLImageElement | HTMLVideoElement | HTMLCanvasElement | RendererBuffer | null} image - The image to use for the panorama.
+   * @param {Partial<PanoramaRendererOptions>=} options - The configuration options for the Panorama Renderer.
+   */
   constructor(
     container: HTMLElement,
     image: HTMLImageElement | HTMLVideoElement | HTMLCanvasElement | RendererBuffer | null,
@@ -95,30 +114,68 @@ export default class PanoramaRenderer {
     this.renderer.tick((dt) => this.drawingLoop(dt));
   }
 
+  /**
+   * @public
+   * @description Get the field of view.
+   * @type {number}
+   */
   public get fov(): number {
     return this.options.fov;
   }
 
+  /**
+   * @public
+   * @description Set the field of view.
+   * @type {number}
+   */
   public set fov(fov: number) {
     this.options.fov = fov;
   }
 
+  /**
+   * @public
+   * @description Get the barrel distortion.
+   * @type {number}
+   */
   public get barrelDistortion(): number {
     return this.options.barrelDistortion;
   }
 
+  /**
+   * @public
+   * @description Set the barrel distortion.
+   * @type {number}
+   */
   public set barrelDistortion(v: number) {
     this.options.barrelDistortion = v;
   }
 
+  /**
+   * @public
+   * @description Get the aspect ratio of the canvas.
+   * @type {number}
+   */
   public get aspectRatio(): number {
     return this.canvas.width / this.canvas.height;
   }
 
+  /**
+   * @public
+   * @function tick
+   * @description Register a ready function to be called when the renderer instance is ready.
+   * @param {(dt: number) => void} func - The function to call.
+   */
   public tick(func: (dt: number) => void) {
     this.renderer.tick(func);
   }
 
+  /**
+   * @public
+   * @function worldToScreen
+   * @description Converts world coordinates to screen coordinates.
+   * @param {Vec3} worldPos - The world coordinates.
+   * @returns {Vec3} The screen coordinates.
+   */
   public worldToScreen(worldPos: Vec3): Vec3 {
     let s = {...worldPos, w: 1};
 
@@ -149,6 +206,14 @@ export default class PanoramaRenderer {
     return {x: s.x, y: s.y, z: s.z};
   }
 
+  /**
+   * @public
+   * @function lookAt
+   * @description Causes the camera to look at a specified position.
+   * @param {Vec3} worldPos - The position to look at.
+   * @param {number} [duration=0] - The duration of the transition.
+   * @param {(t: number) => number} [ease=smoothstep01] - The easing function for the transition.
+   */
   public lookAt(worldPos: Vec3, duration: number = 0, ease: (t: number) => number = smoothstep01) {
     const p = {...worldPos};
 
@@ -169,10 +234,22 @@ export default class PanoramaRenderer {
     }
   }
 
+  /**
+   * @public
+   * @description Get the canvas element.
+   * @type {HTMLCanvasElement}
+   */
   public get canvas(): HTMLCanvasElement {
     return this.renderer.canvas;
   }
 
+  /**
+   * @public
+   * @function screenToWorld
+   * @description Converts screen coordinates to world coordinates.
+   * @param {Vec2} p - The screen coordinates.
+   * @returns {Vec3} The world coordinates.
+   */
   public screenToWorld(p: Vec2): Vec3 {
     let x = p.x * 2 - 1;
     let y = 1 - p.y;
@@ -186,14 +263,32 @@ export default class PanoramaRenderer {
     return {x: rdt.x, y: rdt.y, z: rdt.z};
   }
 
+  /**
+   * @public
+   * @function play
+   * @description Commence or resume the rendering loop.
+   */
   public play(): void {
     this.renderer.play();
   }
 
+  /**
+   * @public
+   * @function stop
+   * @description Pause the rendering loop.
+   */
   public stop(): void {
     this.renderer.stop();
   }
 
+  /**
+   * @public
+   * @function setImage
+   * @description Set an image to a slot for rendering. Possible images can be image elements, video elements, canvas elements, or buffers.
+   * @param {number} slotIndex - Index of the slot where to set the image.
+   * @param {HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | RendererBuffer} image - The image data that you want to set.
+   * @param {Partial<ImageOptions>=} options - The options for the image.
+   */
   public setImage(
     slotIndex: number,
     image: HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | RendererBuffer,

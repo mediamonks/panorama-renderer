@@ -2,23 +2,24 @@ import {clamp} from "./Utils.js";
 
 const EPSILON = 1e-9;
 
-export type Quat = { x: number, y: number, z: number, w: number };
+export type Vec2 = { x: number, y: number };
 export type Vec4 = { x: number, y: number, z: number, w: number };
 export type Vec3 = { x: number, y: number, z: number };
-export type Vec2 = { x: number, y: number };
-export type Mat4 = number[];
-export type Mat3 = number[];
+export type Quat = { x: number, y: number, z: number, w: number };
+
+export type Mat4 = [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
+export type Mat3 = [number, number, number, number, number, number, number, number, number];
 
 // Vec3 math
-function vec3Add(a: Vec3, b: Vec3): Vec3 {
+export function vec3Add(a: Vec3, b: Vec3): Vec3 {
   return {x: a.x + b.x, y: a.y + b.y, z: a.z + b.z};
 }
 
-function vec3Sub(a: Vec3, b: Vec3): Vec3 {
+export function vec3Sub(a: Vec3, b: Vec3): Vec3 {
   return {x: a.x - b.x, y: a.y - b.y, z: a.z - b.z};
 }
 
-function vec3Cross(a: Vec3, b: Vec3): Vec3 {
+export function vec3Cross(a: Vec3, b: Vec3): Vec3 {
   return {
     x: a.y * b.z - a.z * b.y,
     y: a.z * b.x - a.x * b.z,
@@ -26,7 +27,7 @@ function vec3Cross(a: Vec3, b: Vec3): Vec3 {
   };
 }
 
-function vec3Normalize(v: Vec3): Vec3 {
+export function vec3Normalize(v: Vec3): Vec3 {
   const length = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
   return {x: v.x / length, y: v.y / length, z: v.z / length};
 }
@@ -43,11 +44,11 @@ export function vec4Transform(v: Vec4, m: Mat4): Vec4 {
 
 // Mat4 math
 
-export function mat4Perspective(fovy: number, aspect: number, near: number, far: number): number[] {
+export function mat4Perspective(fovy: number, aspect: number, near: number, far: number): Mat4 {
   const f = 1.0 / Math.tan(fovy / 2);
   let nf: number;
 
-  const out: number[] = Array(16).fill(0); // Initialize all values to 0
+  const out = Array(16).fill(0) as Mat4; // Initialize all values to 0
   out[0] = f / aspect;
   out[5] = f;
   out[11] = -1;
@@ -65,7 +66,7 @@ export function mat4Perspective(fovy: number, aspect: number, near: number, far:
 }
 
 export function mat4Multiply(a: Mat4, b: Mat4): Mat4 {
-  let res = Array(16).fill(0); // Output matrix
+  const res = Array(16).fill(0) as Mat4;
 
   for (let i = 0; i < 4; i++) {
     for (let j = 0; j < 4; j++) {
@@ -78,7 +79,7 @@ export function mat4Multiply(a: Mat4, b: Mat4): Mat4 {
   return res;
 }
 
-export function mat4Identity(): number[] {
+export function mat4Identity(): Mat4 {
   return [
     1, 0, 0, 0,
     0, 1, 0, 0,
@@ -88,7 +89,7 @@ export function mat4Identity(): number[] {
 }
 
 export function mat4Inverse(a: Mat4): Mat4 {
-  const out: Mat4 = Array(16).fill(0); // Initialize all values to 0
+  const out = Array(16).fill(0) as Mat4;
 
   const [a00, a01, a02, a03, a10, a11, a12, a13, a20, a21, a22, a23, a30, a31, a32, a33] = a;
 
@@ -134,7 +135,7 @@ export function mat4Inverse(a: Mat4): Mat4 {
 
 // Mat3 math
 
-export function mat3LookAt(eye: Vec3, target: Vec3, up: Vec3): number[] {
+export function mat3LookAt(eye: Vec3, target: Vec3, up: Vec3): Mat3 {
   const zAxis = vec3Normalize(vec3Sub(eye, target));
   const xAxis = vec3Normalize(vec3Cross(up, zAxis));
   const yAxis = vec3Normalize(vec3Cross(zAxis, xAxis));
@@ -205,21 +206,21 @@ export function quatMultiply(q1: Quat, q2: Quat): Quat {
   return {w: w, x: x, y: y, z: z};
 }
 
-export function quatRotateX(q: Quat, angle: number) {
+export function quatRotateX(q: Quat, angle: number): Quat {
   const sinHalf = Math.sin(angle / 2);
   const cosHalf = Math.cos(angle / 2);
   const rotationQuaternion = {w: cosHalf, x: sinHalf, y: 0, z: 0};
   return quatMultiply(q, rotationQuaternion);
 }
 
-export function quatRotateY(q: Quat, angle: number) {
+export function quatRotateY(q: Quat, angle: number): Quat {
   const sinHalf = Math.sin(angle / 2);
   const cosHalf = Math.cos(angle / 2);
   const rotationQuaternion = {w: cosHalf, x: 0, y: sinHalf, z: 0};
   return quatMultiply(q, rotationQuaternion);
 }
 
-export function quatRotateZ(q: Quat, angle: number) {
+export function quatRotateZ(q: Quat, angle: number): Quat {
   const sinHalf = Math.sin(angle / 2);
   const cosHalf = Math.cos(angle / 2);
   const rotationQuaternion = {w: cosHalf, x: 0, y: 0, z: sinHalf};
@@ -302,7 +303,8 @@ export function quatSlerp(a: Quat, b: Quat, t: number): Quat {
 }
 
 export function quatToMat3(q: Quat): Mat3 {
-  const out: number[] = [];
+  const out = Array(9).fill(0) as Mat3;
+
   const {
     x, y, z, w
   } = q;
