@@ -5,13 +5,20 @@ import {
 } from "@mediamonks/image-effect-renderer";
 import type {IRotationController, RotationControllerOptions} from "./RotationController.js";
 import RotationController from "./RotationController.js";
-import Matrix4x4 from "./Matrix4x4.js";
-import Quaternion from "./Quaternion.js";
 import {clamp01, smoothstep01} from "./Utils.js";
-import Vector3 from "./Vector3.js";
-import Matrix3x3 from "./Matrix3x3.js";
-import type {Vec2, Vec3} from "./Math.js";
-import Vector4 from "./Vector4.js";
+import type {Mat4, Quat, Vec2, Vec3, Vec4} from "./Math.js";
+import {
+  mat3LookAt,
+  mat3ToMat4,
+  mat3ToQuat,
+  mat4Inverse,
+  mat4Multiply,
+  mat4Perspective,
+  quatIdentity,
+  quatSlerp,
+  quatToMat3,
+  vec4Transform
+} from "./Math.js";
 
 export type PanoramaRendererOptions = Partial<ImageEffectRendererOptions> & {
   fov: number, // in radians
@@ -44,14 +51,14 @@ export default class PanoramaRenderer {
 
   private rotationController: IRotationController;
 
-  private rotation = new Quaternion();
-  private rotationStart = new Quaternion();
-  private rotationEnd = new Quaternion();
+  private rotation: Quat = quatIdentity();
+  private rotationStart = quatIdentity();
+  private rotationEnd = quatIdentity();
 
-  private projection = new Matrix4x4();
-  private view = new Matrix4x4();
-  private viewProjection = new Matrix4x4();
-  private invViewProjection = new Matrix4x4();
+  private projection: Mat4 = [];
+  private view: Mat4 = [];
+  private viewProjection: Mat4 = [];
+  private invViewProjection: Mat4 = [];
 
   // wide fov will distort. This can be countered using barrel distortion
   // http://www.decarpentier.nl/downloads/lensdistortion-webgl/lensdistortion-webgl.html
@@ -113,9 +120,9 @@ export default class PanoramaRenderer {
   }
 
   public worldToScreen(worldPos: Vec3): Vec3 {
-    const s = new Vector4(worldPos.x, worldPos.y, worldPos.z, 1);
+    let s = {...worldPos, w: 1};
 
-    s.transform(this.viewProjection);
+    s = vec4Transform(s, this.viewProjection);
     s.x /= s.w;
     s.y /= s.w;
 
@@ -143,20 +150,22 @@ export default class PanoramaRenderer {
   }
 
   public lookAt(worldPos: Vec3, duration: number = 0, ease: (t: number) => number = smoothstep01) {
-    const p = new Vector3(worldPos.x, worldPos.y, worldPos.z);
+    const p = {...worldPos};
 
     this.transitionEase = ease;
 
-    Matrix4x4.lookAt(this.view, Vector3.ZERO, p, Vector3.UP);
-    const rotationMatrix = new Matrix3x3();
-    Matrix3x3.normalFromMat4(rotationMatrix, this.view);
+    let rotationMatrix = mat3LookAt({x: 0, y: 0, z: 0}, p, {x: 0, y: 1, z: 0});
+    this.view = mat3ToMat4(rotationMatrix);
+
+    // this.view = mat4LookAt({x: 0, y: 0, z: 0}, p, {x: 0, y: 1, z: 0});
+    // rotationMatrix = mat3NormalizedFromMat4(this.view);
 
     if (duration > 0) {
       this.transitionProgress = 0;
-      this.rotationStart.copy(this.rotation);
-      this.rotationEnd.fromMat3(rotationMatrix);
+      this.rotationStart = {...this.rotation};
+      this.rotationEnd = mat3ToQuat(rotationMatrix);
     } else {
-      this.rotation.fromMat3(rotationMatrix);
+      this.rotation = mat3ToQuat(rotationMatrix);
     }
   }
 
@@ -164,7 +173,7 @@ export default class PanoramaRenderer {
     return this.renderer.canvas;
   }
 
-  public screenToWorld(p: Vec2) {
+  public screenToWorld(p: Vec2): Vec3 {
     let x = p.x * 2 - 1;
     let y = 1 - p.y;
     y = y * 2 - 1;
@@ -172,9 +181,9 @@ export default class PanoramaRenderer {
     const distortion = 1 + this.barrelDistortion * r2;
     x *= distortion;
     y *= distortion;
-    const rd = new Vector4(x, y, 1, 1);
-    rd.transform(this.invViewProjection);
-    return {x: rd.x, y: rd.y, z: rd.z};
+    const rd = {x, y, z: 1, w: 1};
+    const rdt = vec4Transform(rd, this.invViewProjection);
+    return {x: rdt.x, y: rdt.y, z: rdt.z};
   }
 
   public play(): void {
@@ -199,36 +208,29 @@ export default class PanoramaRenderer {
   }
 
   private update(dt: number): void {
-
-    const q = this.rotationController.update(dt, this.rotation, this.transitionProgress < 1);
-    this.rotation.setValues(q.x, q.y, q.z, q.w);
+    this.rotation = this.rotationController.update(dt, this.rotation, this.transitionProgress < 1);
 
     if (this.transitionProgress < 1) {
-      // assumes 60 fps
       this.transitionProgress += dt / this.transitionDuration;
       const progress = this.transitionEase(clamp01(this.transitionProgress));
-      this.rotation = Quaternion.slerp(
-        this.rotationStart,
-        this.rotationEnd,
-        progress,
-      );
+      this.rotation = quatSlerp(this.rotationStart, this.rotationEnd, progress);
     }
 
-    this.updateViewProjection(this.fov, this.aspectRatio);
+    this.updateViewProjection();
   }
 
   private draw() {
     const renderInstance = this.options.controlledRendererInstance ? this.options.controlledRendererInstance : this.renderer;
 
-    renderInstance.setUniformMatrix('uInvViewProjection', new Float32Array(this.invViewProjection.m));
+    renderInstance.setUniformMatrix('uInvViewProjection', new Float32Array(this.invViewProjection));
     renderInstance.setUniformFloat('uBarrelDistortion', this.barrelDistortion);
   }
 
-  private updateViewProjection(fov: number, aspect: number): void {
-    Matrix4x4.perspective(this.projection, fov, aspect, 0.01, 100);
-    Matrix4x4.fromQuat(this.view, this.rotation);
-    Matrix4x4.multiply(this.viewProjection, this.projection, this.view);
-    Matrix4x4.invert(this.invViewProjection, this.viewProjection);
+  protected updateViewProjection(): void {
+    this.projection = mat4Perspective(this.fov, this.aspectRatio, 0.01, 100);
+    this.view = mat3ToMat4(quatToMat3(this.rotation));
+    this.viewProjection = mat4Multiply(this.view, this.projection);
+    this.invViewProjection = mat4Inverse(this.viewProjection);
   }
 
   private get shader(): string {
