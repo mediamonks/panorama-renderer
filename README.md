@@ -23,7 +23,7 @@ const renderer = PanoramaRenderer(wrapperElement, image, { loop: true });
 
 ## Building
 
-In order to build seng-event, ensure that you have [Git](http://git-scm.com/downloads)
+To build panorama-renderer, ensure that you have [Git](http://git-scm.com/downloads)
 and [Node.js](http://nodejs.org/) installed.
 
 Clone a copy of the repo:
