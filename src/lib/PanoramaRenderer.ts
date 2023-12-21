@@ -1,7 +1,7 @@
 import {
   ImageEffectRenderer, type ImageEffectRendererOptions, type ImageOptions,
-  RendererBuffer,
-  RendererInstance
+  type RendererBuffer,
+  type RendererInstance
 } from "@mediamonks/image-effect-renderer";
 import type {IRotationController, RotationControllerOptions} from "./RotationController.js";
 import RotationController from "./RotationController.js";
@@ -365,7 +365,7 @@ void mainImage( out vec4 c, vec2 p ) {
 }`;
 
   public destruct() {
-    if (this.renderer instanceof RendererInstance) {
+    if (this.renderer) {
       ImageEffectRenderer.releaseTemporary(this.renderer);
     }
   }
