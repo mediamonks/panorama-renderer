@@ -1,6 +1,6 @@
 {
   "name": "@mediamonks/panorama-renderer",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "The panorama-renderer is a lightweight package that allows you to render equirectangular panoramas using WebGL.",
   "keywords": [
     "fragment shader",
