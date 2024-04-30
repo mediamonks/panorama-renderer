@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>PanoramaRenderer Examples</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-wrap: wrap;
+            overflow: hidden;
+        }
+
+        .grid-item {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 50vh;
+            line-height: 0;
+            position: relative;
+        }
+        .grid-item-half {
+          width: 50vw;
+        }
+    </style>
+</head>
+<body>
+  <div class="grid-item grid-item-half"></div>
+  <div class="grid-item grid-item-half"></div>
+  <div class="grid-item"></div>
+  <script src="bundle.js"></script>
+</body>
+</html>
