@@ -17,7 +17,7 @@
     "webpack-dev-server": "^4.7.4"
   },
   "dependencies": {
-    "@mediamonks/image-effect-renderer": "^2.1.0",
+    "@mediamonks/image-effect-renderer": "^2.2.4",
     "@mediamonks/panorama-renderer": "^2.0.2"
   }
 }
