@@ -2,6 +2,12 @@
 
 The panorama-renderer is a lightweight package that allows you to render equirectangular panoramas using WebGL.
 
+## Demo
+
+- [Stress test with multiple demos](https://mediamonks.github.io/panorama-renderer/).
+
+This is a build from the repository's example/ directory.
+
 ## Getting started
 
 ### Installing
