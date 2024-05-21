@@ -13,8 +13,17 @@
   "repository": "git@github.com:mediamonks/panorama-renderer.git",
   "author": "Reinder Nijhoff <reinder@mediamonks.com>",
   "license": "MIT",
-  "exports": "./dist/index.js",
   "type": "module",
+  "main": "./dist/panorama-renderer.umd.cjs",
+  "module": "./dist/panorama-renderer.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/panorama-renderer.js",
+      "require": "./dist/panorama-renderer.umd.cjs",
+      "types": "./index.d.ts"
+    }
+  },
   "files": [
     "dist/**/*",
     "README.md"
