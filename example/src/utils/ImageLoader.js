@@ -9,7 +9,7 @@ export default class ImageLoader {
     return new Promise((resolve) => {
       const img = new Image;
       img.onload = () => resolve(img);
-      img.src = `./static/${fileName}`;
+      img.src = fileName;
     });
   }
 }

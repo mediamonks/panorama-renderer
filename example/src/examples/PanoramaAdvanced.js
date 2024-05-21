@@ -1,6 +1,6 @@
-import {quatIdentity, quatRotateY, PanoramaRenderer} from '@mediamonks/panorama-renderer';
-import glitch from '../shader/glitch.glsl';
-import panoramaMix from '../shader/panoramaMix.glsl';
+import {quatIdentity, quatRotateY, PanoramaRenderer} from '../../../src/index';
+import glitch from '../shader/glitch.glsl?raw';
+import panoramaMix from '../shader/panoramaMix.glsl?raw';
 import ImageLoader from "../utils/ImageLoader";
 import {ImageEffectRenderer} from "@mediamonks/image-effect-renderer";
 

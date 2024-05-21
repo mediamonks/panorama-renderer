@@ -23,24 +23,26 @@
     "access": "public"
   },
   "scripts": {
-    "dev": "npm run build:ts -- --watch",
+    "dev": "vite",
     "build": "npm run clean && npm run build:ts",
-    "build:ts": "tsc -p ./tsconfig.build.json",
+    "build:ts": "vite build",
     "clean": "shx rm -rf dist node_modules/.cache/.tsbuildinfo",
     "typecheck": "tsc --project tsconfig.json --noEmit --noUnusedLocals",
     "prepare-publish": "tsx ./scripts/preparePublish.ts"
   },
   "devDependencies": {
-    "@types/shelljs": "^0.8.15",
+    "@types/shelljs": "^0.8.14",
     "shelljs": "^0.8.5",
     "shx": "^0.3.4",
     "tsx": "^4.6.2",
-    "typescript": "^5.2.2"
+    "typescript": "^5.0.4",
+    "vite": "^5.1.6",
+    "vite-plugin-dts": "^3.7.3"
   },
   "engines": {
     "node": ">=16.0.0"
   },
   "dependencies": {
-    "@mediamonks/image-effect-renderer": "^2.1.2"
+    "@mediamonks/image-effect-renderer": "^2.2.7"
   }
 }

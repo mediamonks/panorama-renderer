@@ -71,6 +71,7 @@ export function mat4Multiply(a: Mat4, b: Mat4): Mat4 {
   for (let i = 0; i < 4; i++) {
     for (let j = 0; j < 4; j++) {
       for (let k = 0; k < 4; k++) {
+        // @ts-ignore
         res[i * 4 + j] += a[i * 4 + k] * b[k * 4 + j];
       }
     }
@@ -163,15 +164,20 @@ export function mat3ToQuat(m: Mat3): Quat {
     // |w| <= 1/2
     let i = 0;
     if (m[4] > m[0]) i = 1;
+    // @ts-ignore
     if (m[8] > m[i * 3 + i]) i = 2;
     const j = (i + 1) % 3;
     const k = (i + 2) % 3;
 
+    // @ts-ignore
     const fRoot = Math.sqrt(m[i * 3 + i] - m[j * 3 + j] - m[k * 3 + k] + 1.0);
     const iv = 0.5 * fRoot;
     const ifRoot = 0.5 / fRoot;
+    // @ts-ignore
     w = (m[j * 3 + k] - m[k * 3 + j]) * ifRoot;
+    // @ts-ignore
     const jv = (m[j * 3 + i] + m[i * 3 + j]) * ifRoot;
+    // @ts-ignore
     const kv = (m[k * 3 + i] + m[i * 3 + k]) * ifRoot;
 
     x = i == 0 ? iv : j == 0 ? jv : kv;

@@ -110,9 +110,11 @@ export default class RotationController implements IRotationController {
       euler.z = 0;
 
       if (this.options.clampXRotation) {
+        // @ts-ignore
         euler.x = Math.min(Math.max(euler.x, this.options.clampXRotation[0]), this.options.clampXRotation[1]);
       }
       if (this.options.clampYRotation) {
+        // @ts-ignore
         euler.y = Math.min(Math.max(euler.y, this.options.clampYRotation[0]), this.options.clampYRotation[1]);
       }
 
