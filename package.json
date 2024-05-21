@@ -52,6 +52,6 @@
     "node": ">=16.0.0"
   },
   "dependencies": {
-    "@mediamonks/image-effect-renderer": "^2.2.7"
+    "@mediamonks/image-effect-renderer": "^2.3"
   }
 }

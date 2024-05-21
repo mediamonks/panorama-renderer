@@ -1,4 +1,4 @@
-import {PanoramaRenderer} from '../../../src/index';
+import {PanoramaRenderer} from '@mediamonks/panorama-renderer';
 import ImageLoader from '../utils/ImageLoader';
 
 export default class Panorama {
