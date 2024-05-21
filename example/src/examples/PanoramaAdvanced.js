@@ -1,8 +1,7 @@
-import {quatIdentity, quatRotateY, PanoramaRenderer} from '@mediamonks/panorama-renderer';
+import {quatIdentity, quatRotateY, PanoramaRenderer, ImageEffectRenderer} from '@mediamonks/panorama-renderer';
 import glitch from '../shader/glitch.glsl?raw';
 import panoramaMix from '../shader/panoramaMix.glsl?raw';
 import ImageLoader from "../utils/ImageLoader";
-import {ImageEffectRenderer} from "@mediamonks/image-effect-renderer";
 
 class AutoRotationController {
     constructor() {
