@@ -13,7 +13,7 @@
   "keywords": [],
   "license": "MIT",
   "devDependencies": {
-    "vite": "^5.1.6"
+    "vite": "^5.2.14"
   },
   "dependencies": {
     "@mediamonks/panorama-renderer": "^2.1"
