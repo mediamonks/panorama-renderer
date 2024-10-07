@@ -111,7 +111,7 @@ export default class PanoramaRenderer {
       this.setImage(0, image, {flipY: true, clampX: false, clampY: true, useMipmap: true});
     }
 
-    this.renderer.tick((dt) => this.drawingLoop(dt));
+    this.renderer.tick((dt: number) => this.drawingLoop(dt));
   }
 
   /**
